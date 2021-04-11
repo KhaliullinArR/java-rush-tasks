@@ -18,6 +18,8 @@ texst
 data
 file
 your.file.name
+*.gitignore
+*.gitattributes
 text
 text1
 text2
