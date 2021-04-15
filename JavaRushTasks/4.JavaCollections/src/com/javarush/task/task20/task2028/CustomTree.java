@@ -1,9 +1,9 @@
 package com.javarush.task.task20.task2028;
 
 import java.io.Serializable;
-import java.util.AbstractList;
-import java.util.Collection;
-import java.util.List;
+import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /* 
 Построй дерево(1)
@@ -12,6 +12,8 @@ import java.util.List;
 public class CustomTree extends AbstractList<String>  implements Cloneable, Serializable{
 
     Entry<String> root;
+
+    private static Entry<String> parent;
 
     public CustomTree() {
         this.root = new Entry<>("root");
@@ -41,25 +43,85 @@ public class CustomTree extends AbstractList<String>  implements Cloneable, Seri
     }
 
 
+    private void updateTree(Queue<Entry<String>> relatives){
+        int size = relatives.size();
+        if(relatives.isEmpty())return;
+        for (int i = 0; i < size; i++) {
+            Entry<String> parent = relatives.remove();
+            if(parent.rightChild == null) parent.availableToAddRightChildren = true;
+            else relatives.add(parent.rightChild);
 
-    private void addEntry(Entry<String> root, String name) {
+            if(parent.leftChild == null) parent.availableToAddLeftChildren = true;
+            else relatives.add(parent.leftChild);
 
+        }
+        updateTree(relatives);
+    }
+
+    private void addEntry(Queue<Entry<String>> relatives, String name) {
+        int size = relatives.size();
+        if(relatives.isEmpty()){
+            updateTree(Stream.of(root).collect(Collectors.toCollection(LinkedList::new)));
+            addEntry(Stream.of(root).collect(Collectors.toCollection(LinkedList::new)),name);
+            return;
+        }
+        for (int i = 0; i < size; i++) {
+            Entry<String> parent = relatives.remove();
+            if(parent.rightChild==null && parent.availableToAddRightChildren){
+                parent.rightChild=new Entry<>(name);
+                parent.rightChild.parent = parent;
+                return;
+            }
+
+            if(parent.leftChild==null && parent.availableToAddLeftChildren){
+                parent.leftChild=new Entry<>(name);
+                parent.leftChild.parent = parent;
+                return;
+            }
+
+            if(parent.rightChild!=null)
+            relatives.add(parent.rightChild);
+            if(parent.leftChild!=null)
+            relatives.add(parent.leftChild);
+        }
+        addEntry(relatives, name);
+    }
+
+    public void removeRec(Queue<Entry<String>> relatives, String name) {
+        int size = relatives.size();
+        for (int i = 0; i < size; i++) {
+            Entry<String> parent = relatives.remove();
+            if(parent.rightChild != null)
+                if(parent.rightChild.elementName.equals(name)){
+                    parent.rightChild = null;
+                    parent.availableToAddRightChildren = false;
+                    return;
+                }
+            if(parent.leftChild != null)
+                if (parent.leftChild.elementName.equals(name)) {
+                    parent.leftChild = null;
+                    parent.availableToAddLeftChildren = false;
+                    return;
+                }
+                relatives.add(parent.rightChild);
+                relatives.add(parent.leftChild);
+        }
+        removeRec(relatives, name);
+    }
+
+    @Override
+    public boolean remove(Object name){
+        if(!(name instanceof String)) throw new UnsupportedOperationException();
+        removeRec(Stream.of(root).collect(Collectors.toCollection(LinkedList::new)),(String) name);
+        return true;
     }
 
     @Override
     public boolean add(String s) {
-       addEntry(root,s);
-
+       addEntry(Stream.of(root).collect(Collectors.toCollection(LinkedList::new)),s);
        return true;
     }
 
-    /*public String get(int index)
-    public String set(int index, String element)
-    public void add(int index, String element)
-    public String remove(int index)
-    public List<String> subList(int fromIndex, int toIndex)
-    protected void removeRange(int fromIndex, int toIndex)
-    public boolean addAll(int index, Collection<? extends String> c)*/
 
 
      static class Entry<T> implements Serializable{
@@ -85,21 +147,50 @@ public class CustomTree extends AbstractList<String>  implements Cloneable, Seri
     }
 
 
-    private int size(Entry<String> entry,int i){
-         if(entry.leftChild==null && entry.rightChild==null)return 1;
 
-        if(entry.rightChild!=null)i += size(entry.rightChild, i);
-        if(entry.leftChild!=null)i += size(entry.leftChild, i);
-
-        return i;
+    private int treeSize(Entry<String> root){
+        if(root == null) return 0;
+        else return treeSize(root.rightChild) + 1 + treeSize(root.leftChild);
     }
 
     @Override
     public int size() {
-         int i = 1;
-         if(root.rightChild!=null)i += size(root.rightChild, i);
-         if(root.leftChild!=null)i += size(root.leftChild, i);
-        return i;
+        return treeSize(root)-1;
+    }
+
+    private void findParent(String name, Queue<Entry<String>> relatives) {
+        int size = relatives.size();
+        if (relatives.isEmpty())return;
+        for (int i = 0; i < size; i++) {
+            Entry<String> par = relatives.remove();
+            if(par.rightChild!=null){
+               if(par.rightChild.elementName.equals(name)) {
+                   parent = par;
+                   return;
+               }
+            }
+
+            if(par.leftChild!=null){
+                if(par.leftChild.elementName.equals(name)) {
+                    parent = par;
+                    return;
+                }
+            }
+
+            if(par.rightChild!=null)
+                relatives.add(par.rightChild);
+            if(par.leftChild!=null)
+                relatives.add(par.leftChild);
+        }
+        findParent(name, relatives);
+    }
+
+    public String getParent(String name){
+         if(name.equals("root"))return null;
+        parent = null;
+        findParent(name, Stream.of(root).collect(Collectors.toCollection(LinkedList::new)));
+        if(parent == null) return null;
+        return parent.elementName;
     }
 
     @Override
@@ -125,7 +216,7 @@ public class CustomTree extends AbstractList<String>  implements Cloneable, Seri
             System.out.println();
             watch(root.leftChild);
         }
-        System.out.println();
+        else System.out.println("Do not have any child.\n");
     }
 }
 
