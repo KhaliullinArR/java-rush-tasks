@@ -1,2 +1,2 @@
-# java-rush-tasks
+# JAVA RUSH TASKS
  Java tutorial course
